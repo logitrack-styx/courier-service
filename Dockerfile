@@ -14,4 +14,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
 COPY --from=builder /app/target/*.jar app.jar
 USER appuser
 EXPOSE 8082
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+  CMD curl --fail --silent http://localhost:8082/actuator/health || exit 1
+
 ENTRYPOINT ["java", "-jar", "app.jar"]

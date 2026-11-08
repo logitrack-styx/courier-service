@@ -37,6 +37,15 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/couriers")
 @RequiredArgsConstructor
+@io.swagger.v3.oas.annotations.tags.Tag(name = "Couriers", description = "Perfiles logísticos; ADMIN administra, REPARTIDOR opera sobre su propio UUID")
+@io.swagger.v3.oas.annotations.responses.ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Entrada o paginación inválida"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "JWT ausente o inválido"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Rol o propietario no autorizado"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Perfil inexistente"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Perfil duplicado"),
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "503", description = "Autoridad de identidad no disponible")
+})
 public class CourierController {
 
     private static final String ADMIN = "hasRole('ADMIN')";
@@ -46,24 +55,31 @@ public class CourierController {
     private final CourierService courierService;
 
     @PostMapping
+    @io.swagger.v3.oas.annotations.Operation(summary = "Crear perfil para un usuario REPARTIDOR existente (ADMIN)")
     @PreAuthorize(ADMIN)
     public ResponseEntity<CourierResponse> create(@Valid @RequestBody CourierRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(courierService.create(request));
     }
 
     @GetMapping
+    @io.swagger.v3.oas.annotations.Operation(summary = "Listar perfiles por estado con page y size, máximo 100; totales en headers (ADMIN)")
     @PreAuthorize(ADMIN)
-    public ResponseEntity<List<CourierResponse>> findAll(@RequestParam(required = false) EstadoCourier estado) {
-        return ResponseEntity.ok(courierService.findAll(estado));
+    public ResponseEntity<List<CourierResponse>> findAll(@RequestParam(required = false) EstadoCourier estado,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+        var result = courierService.findAll(estado, page, size);
+        return ResponseEntity.ok().header("X-Total-Count", Long.toString(result.getTotalElements()))
+                .header("X-Total-Pages", Integer.toString(result.getTotalPages())).body(result.getContent());
     }
 
     @GetMapping("/{id}")
+    @io.swagger.v3.oas.annotations.Operation(summary = "Consultar perfil (ADMIN o propietario)")
     @PreAuthorize(ADMIN_O_PROPIETARIO)
     public ResponseEntity<CourierResponse> findById(@PathVariable UUID id) {
         return ResponseEntity.ok(courierService.findById(id));
     }
 
     @PutMapping("/{id}")
+    @io.swagger.v3.oas.annotations.Operation(summary = "Actualizar nombre y vehículo (ADMIN o propietario)")
     @PreAuthorize(ADMIN_O_PROPIETARIO)
     public ResponseEntity<CourierResponse> update(@PathVariable UUID id,
                                                   @Valid @RequestBody CourierUpdateRequest request) {
@@ -71,6 +87,7 @@ public class CourierController {
     }
 
     @PatchMapping("/{id}/estado")
+    @io.swagger.v3.oas.annotations.Operation(summary = "Cambiar estado operativo (ADMIN)")
     @PreAuthorize(ADMIN)
     public ResponseEntity<CourierResponse> cambiarEstado(@PathVariable UUID id,
                                                          @Valid @RequestBody CourierEstadoRequest request) {
@@ -78,6 +95,7 @@ public class CourierController {
     }
 
     @GetMapping("/{id}/disponibilidad")
+    @io.swagger.v3.oas.annotations.Operation(summary = "Consultar disponibilidad para asignación (ADMIN o propietario)")
     @PreAuthorize(ADMIN_O_PROPIETARIO)
     public ResponseEntity<DisponibilidadResponse> disponibilidad(@PathVariable UUID id) {
         return ResponseEntity.ok(courierService.consultarDisponibilidad(id));

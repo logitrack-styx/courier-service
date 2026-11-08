@@ -55,7 +55,7 @@ final class JwtTest {
         try {
             JWTClaimsSet claims = new JWTClaimsSet.Builder()
                     .subject(sub.toString())
-                    .issuer("logitrack-security-service")
+                    .issuer("logitrack-security")
                     .claim("roles", List.of(roles))
                     .issueTime(new Date(System.currentTimeMillis() - 7_200_000))
                     .expirationTime(expiracion)

@@ -43,6 +43,21 @@ import com.courier.service.repository.CourierRepository;
 @SpringBootTest
 @AutoConfigureMockMvc
 class CourierApiTest {
+    @Test
+    void documentsBearerAndBoundsListQueries() throws Exception {
+        mvc.perform(get("/v3/api-docs")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.scheme").value("bearer"))
+                .andExpect(jsonPath("$.paths['/couriers']").exists());
+        mvc.perform(get("/swagger-ui/index.html")).andExpect(status().isOk());
+        for (int i = 0; i < 25; i++) guardar(UUID.randomUUID(), "Courier " + i, EstadoCourier.ACTIVO);
+        mvc.perform(conAdmin(get("/couriers").param("size", "10")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(10))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("X-Total-Count", "25"));
+        mvc.perform(conAdmin(get("/couriers").param("page", "99")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(conAdmin(get("/couriers").param("size", "101"))).andExpect(status().isBadRequest());
+        mvc.perform(conAdmin(get("/couriers").param("page", "-1"))).andExpect(status().isBadRequest());
+    }
 
     @DynamicPropertySource
     static void propiedades(DynamicPropertyRegistry registry) {

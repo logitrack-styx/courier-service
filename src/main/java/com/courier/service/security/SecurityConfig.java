@@ -13,6 +13,11 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtGra
 import org.springframework.security.web.SecurityFilterChain;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.oauth2.jwt.*;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.converter.RsaKeyConverters;
 
 /**
  * Seguridad de courier-service: resource server JWT, sin estado.
@@ -30,6 +35,47 @@ public class SecurityConfig {
 
     private final JsonSecurityErrorHandler errorHandler;
 
+    /**
+     * Valida RS256, issuer, vigencia e identidad sin depender de Security en cada request.
+     * @param key clave pública montada
+     * @param issuer emisor autorizado
+     * @return decoder local
+     * @throws Exception si no puede cargar la clave
+     */
+    @Bean
+    JwtDecoder jwtDecoder(
+            @Value("${spring.security.oauth2.resourceserver.jwt.public-key-location}") org.springframework.core.io.Resource key,
+            @Value("${security.jwt.issuer:logitrack-security}") String issuer) throws Exception {
+        java.security.interfaces.RSAPublicKey publicKey;
+        try (var stream = key.getInputStream()) {
+            publicKey = RsaKeyConverters.x509().convert(stream);
+        }
+        var decoder = NimbusJwtDecoder.withPublicKey(publicKey)
+                .signatureAlgorithm(org.springframework.security.oauth2.jose.jws.SignatureAlgorithm.RS256).build();
+
+        OAuth2TokenValidator<Jwt> identity = jwt -> {
+            try {
+                String sub = jwt.getSubject();
+                Object claim = jwt.getClaims().get("roles");
+                if (sub == null || !java.util.UUID.fromString(sub).toString().equals(sub)
+                        || jwt.getExpiresAt() == null
+                        || !(claim instanceof java.util.List<?> roles) || roles.size() != 1
+                        || !(roles.get(0) instanceof String role)
+                        || !java.util.List.of("ADMIN", "CLIENTE", "REPARTIDOR").contains(role)) {
+                    throw new IllegalArgumentException();
+                }
+                return org.springframework.security.oauth2.core.OAuth2TokenValidatorResult.success();
+            } catch (IllegalArgumentException ex) {
+                return org.springframework.security.oauth2.core.OAuth2TokenValidatorResult.failure(
+                        new org.springframework.security.oauth2.core.OAuth2Error("invalid_token"));
+            }
+        };
+
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(JwtValidators.createDefaultWithIssuer(issuer), identity));
+        return decoder;
+    }
+
+
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -37,6 +83,7 @@ public class SecurityConfig {
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .anyRequest().authenticated())
             .exceptionHandling(e -> e
                 .authenticationEntryPoint(errorHandler)

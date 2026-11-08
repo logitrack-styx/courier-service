@@ -1,7 +1,7 @@
 package com.courier.service.security;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -52,7 +52,7 @@ public class JsonSecurityErrorHandler implements AuthenticationEntryPoint, Acces
                 .status(status.value())
                 .error(status.getReasonPhrase())
                 .mensaje(mensaje)
-                .timestamp(LocalDateTime.now())
+                .timestamp(OffsetDateTime.now(java.time.ZoneOffset.UTC))
                 .build());
     }
 }

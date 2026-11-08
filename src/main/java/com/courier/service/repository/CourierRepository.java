@@ -27,5 +27,8 @@ public interface CourierRepository extends JpaRepository<Courier, UUID> {
      */
     //Optional<Courier> findByEstadoCourier(EstadoCourier estado);
 
-    List<Courier> findByEstado(EstadoCourier estado);
+    default List<Courier> findByEstado(EstadoCourier estado) {
+        return findByEstado(estado, com.courier.service.config.BoundedPage.of(0, 20)).getContent();
+    }
+    org.springframework.data.domain.Page<Courier> findByEstado(EstadoCourier estado, org.springframework.data.domain.Pageable pageable);
 }

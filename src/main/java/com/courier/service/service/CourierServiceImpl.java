@@ -26,6 +26,20 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class CourierServiceImpl implements CourierService {
 
+    /**
+     * @param estado filtro opcional
+     * @param page página desde cero
+     * @param size límite entre 1 y 100
+     * @return página ordenada de perfiles
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<CourierResponse> findAll(EstadoCourier estado, int page, int size) {
+        var pageable = com.courier.service.config.BoundedPage.of(page, size);
+        return (estado == null ? courierRepository.findAll(pageable) : courierRepository.findByEstado(estado, pageable))
+                .map(this::toResponse);
+    }
+
     private final CourierRepository courierRepository;
     private final UsuarioRolVerifier usuarioRolVerifier;
 
@@ -55,11 +69,7 @@ public class CourierServiceImpl implements CourierService {
     @Override
     @Transactional(readOnly = true)
     public List<CourierResponse> findAll(EstadoCourier estado) {
-        List<Courier> couriers = (estado == null)
-                ? courierRepository.findAll()
-                : courierRepository.findByEstado(estado);
-        log.info("Se encontraron {} couriers{}", couriers.size(), estado == null ? "" : " en estado " + estado);
-        return couriers.stream().map(this::toResponse).toList();
+        return findAll(estado, 0, 20).getContent();
     }
 
     @Override

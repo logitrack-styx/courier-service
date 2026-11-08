@@ -16,6 +16,14 @@ import com.courier.service.enums.EstadoCourier;
  * @author TheMiggaCool
  */
 public interface CourierService {
+    /**
+     * @param estado filtro opcional
+     * @param page página desde cero
+     * @param size tamaño entre 1 y 100
+     * @return página limitada
+     */
+    org.springframework.data.domain.Page<CourierResponse> findAll(EstadoCourier estado, int page, int size);
+
 
     /** Alta: valida que el userId sea un REPARTIDOR y crea el courier ACTIVO con id = userId. */
     CourierResponse create(CourierRequest courierRequest);

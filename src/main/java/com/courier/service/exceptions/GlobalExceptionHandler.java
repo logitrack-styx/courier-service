@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
@@ -27,6 +27,14 @@ import java.util.stream.Collectors;
  * @author TheMiggaCool
  */
 public class GlobalExceptionHandler {
+    /**
+     * @param ex límites de paginación inválidos
+     * @return respuesta 400 contractual
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> invalidArgument(IllegalArgumentException ex) {
+        return ResponseEntity.badRequest().body(new ErrorResponse(400, "Bad Request", ex.getMessage(), OffsetDateTime.now(java.time.ZoneOffset.UTC)));
+    }
 
     /**
      * Recurso no encontrado (404 Not found)
@@ -39,7 +47,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.NOT_FOUND.value(),
                 HttpStatus.NOT_FOUND.getReasonPhrase(),
                 ex.getMessage(),
-                LocalDateTime.now()
+                OffsetDateTime.now(java.time.ZoneOffset.UTC)
         );
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(respuesta);
     }
@@ -55,7 +63,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.CONFLICT.value(),
                 HttpStatus.CONFLICT.getReasonPhrase(),
                 ex.getMessage(),
-                LocalDateTime.now()
+                OffsetDateTime.now(java.time.ZoneOffset.UTC)
         );
         return ResponseEntity.status(HttpStatus.CONFLICT).body(respuesta);
     }
@@ -71,7 +79,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.CONFLICT.value(),
                 HttpStatus.CONFLICT.getReasonPhrase(),
                 ex.getMessage(),
-                LocalDateTime.now()
+                OffsetDateTime.now(java.time.ZoneOffset.UTC)
         );
         return ResponseEntity.status(HttpStatus.CONFLICT).body(respuesta);
     }
@@ -161,7 +169,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(),
                 "Ocurrió un error interno inesperado. Por favor intente más tarde.",
-                LocalDateTime.now()
+                OffsetDateTime.now(java.time.ZoneOffset.UTC)
         );
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
@@ -172,7 +180,7 @@ public class GlobalExceptionHandler {
                 .status(status.value())
                 .error(status.getReasonPhrase())
                 .mensaje(mensaje)
-                .timestamp(LocalDateTime.now())
+                .timestamp(OffsetDateTime.now(java.time.ZoneOffset.UTC))
                 .build();
         return ResponseEntity.status(status).body(respuesta);
     }

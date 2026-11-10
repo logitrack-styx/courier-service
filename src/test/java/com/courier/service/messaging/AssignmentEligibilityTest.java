@@ -10,6 +10,9 @@ import static org.mockito.Mockito.when;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import com.courier.service.enums.EstadoCourier;
 import com.courier.service.model.Courier;
@@ -25,6 +28,32 @@ import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType;
  * @author dominox45
  */
 class AssignmentEligibilityTest {
+    @Test
+    void concurrentConsumersConvergeOnOnePersistedDecision() throws Exception {
+        var db = new EmbeddedDatabaseBuilder().generateUniqueName(true).setType(EmbeddedDatabaseType.H2)
+                .addScript("db/migration/V1__assignment_eligibility_inbox.sql").build();
+        try (var workers = Executors.newFixedThreadPool(2)) {
+            var repository = mock(CourierRepository.class);
+            var courier = UUID.randomUUID();
+            var ready = new CountDownLatch(2);
+            when(repository.findById(courier)).thenAnswer(call -> {
+                ready.countDown();
+                assertTrue(ready.await(10, TimeUnit.SECONDS));
+                return Optional.of(Courier.builder().estado(EstadoCourier.ACTIVO).build());
+            });
+            var jdbc = new JdbcTemplate(db);
+            var decisions = new AssignmentEligibility(jdbc, repository);
+            var command = new AssignmentEvent(UUID.randomUUID(), UUID.randomUUID(), Instant.now(), 1,
+                    UUID.randomUUID(), courier);
+            var first = workers.submit(() -> decisions.decide(command));
+            var second = workers.submit(() -> decisions.decide(command));
+            assertEquals(first.get(15, TimeUnit.SECONDS), second.get(15, TimeUnit.SECONDS));
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM courier_assignment_eligibility", Integer.class));
+        } finally {
+            db.shutdown();
+        }
+    }
+
     @Test
     void storesDecisionsAndReplaysTheSameResponseAfterAvailabilityChanges() {
         var db = new EmbeddedDatabaseBuilder().generateUniqueName(true).setType(EmbeddedDatabaseType.H2)

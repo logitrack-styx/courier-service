@@ -35,7 +35,8 @@ class CourierResultPublisher {
     private final RabbitTemplate rabbit;
     private final ObjectMapper mapper;
 
-    @Scheduled(fixedDelayString = "${courier.assignment.poll-delay-ms:1000}")
+    @Scheduled(fixedDelayString = "${courier.assignment.poll-delay-ms:1000}",
+            initialDelayString = "${courier.assignment.poll-delay-ms:1000}")
     void publishDue() {
         var due = jdbc.query("""
                 SELECT result_event_id, operation_id, occurred_at, shipment_id, courier_id, approved, attempts

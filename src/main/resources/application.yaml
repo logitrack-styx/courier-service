@@ -1,4 +1,21 @@
 spring:
+  flyway:
+    baseline-on-migrate: true
+    baseline-version: 0
+  rabbitmq:
+    connection-timeout: 3s
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 4
+          initial-interval: 1s
+          multiplier: 2
   application:
     name: courier-service
   config:
@@ -20,7 +37,14 @@ spring:
 server:
   port: ${SERVER_PORT:8082}
 
+courier:
+  assignment:
+    messaging-enabled: ${ASSIGNMENT_MESSAGING_ENABLED:false}
+
 management:
+  health:
+    rabbit:
+      enabled: false
   endpoints:
     web:
       exposure:

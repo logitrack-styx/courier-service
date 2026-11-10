@@ -16,6 +16,9 @@ spring:
 # spring.security.oauth2.resourceserver.jwt.public-key-location se inyecta desde JwtTestSupport.
 
 management:
+  health:
+    rabbit:
+      enabled: false
   endpoints:
     web:
       exposure:
